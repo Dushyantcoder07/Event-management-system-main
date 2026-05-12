@@ -36,9 +36,20 @@ app.use(cookieParser());
 app.use(compression());
 
 // Basic rate limit
+const parsedApiRateLimitMax = Number.parseInt(
+  process.env.API_RATE_LIMIT_MAX ?? '',
+  10
+);
+
+const apiRateLimitMax =
+  Number.isFinite(parsedApiRateLimitMax) &&
+  parsedApiRateLimitMax > 0
+    ? parsedApiRateLimitMax
+    : 120;
+
 const globalRateLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: process.env.API_RATE_LIMIT_MAX || 120,
+  max: apiRateLimitMax,
   standardHeaders: true,
   legacyHeaders: false,
 });
