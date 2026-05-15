@@ -14,14 +14,54 @@ const Profile = () => {
     });
     const [message, setMessage] = useState('');
     const [messageType, setMessageType] = useState(''); // 'success' or 'error'
+    const [phoneError, setPhoneError] = useState('');
+
+    // Validate phone number format
+    const validatePhoneNumber = (phoneNumber) => {
+        if (!phoneNumber) return true; // Allow empty phone number
+        // Accept international format with +, country code, and 7-15 digits
+        const phoneRegex = /^(\+?\d{1,3}[- ]?)?\d{6,14}$/;
+        return phoneRegex.test(phoneNumber.replace(/[\s\-()]/g, ''));
+    };
+
+    // Validate name
+    const validateName = (name) => {
+        return name && name.trim().length >= 2;
+    };
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        setFormData({ ...formData, [name]: value });
+
+        // Validate phone number in real-time
+        if (name === 'phoneNumber' && value) {
+            if (!validatePhoneNumber(value)) {
+                setPhoneError('Invalid phone number format. Use format: +1234567890 or 1234567890');
+            } else {
+                setPhoneError('');
+            }
+        } else if (name === 'phoneNumber') {
+            setPhoneError(''); // Clear error if field is empty
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setMessage('');
+        setPhoneError('');
+        
+        // Validate form data
+        if (!validateName(formData.name)) {
+            setMessageType('error');
+            setMessage('Name must be at least 2 characters long.');
+            return;
+        }
+
+        if (formData.phoneNumber && !validatePhoneNumber(formData.phoneNumber)) {
+            setMessageType('error');
+            setMessage('Invalid phone number format. Use format: +1234567890 or 1234567890');
+            return;
+        }
         
         try {
             const token = localStorage.getItem('token');
@@ -129,14 +169,22 @@ const Profile = () => {
                             <div className="relative">
                                 <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                 <input
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-9 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className={`flex h-10 w-full rounded-md border bg-background px-3 py-2 pl-9 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                                        phoneError ? 'border-red-500' : 'border-input'
+                                    }`}
                                     name="phoneNumber"
                                     value={isEditing ? formData.phoneNumber : (user.phoneNumber || 'Not provided')}
                                     onChange={handleChange}
                                     disabled={!isEditing}
-                                    placeholder="Enter your phone number"
+                                    placeholder="Enter your phone number (e.g., +1234567890)"
                                 />
                             </div>
+                            {phoneError && (
+                                <p className="text-[0.8rem] text-red-500 flex items-center gap-1">
+                                    <AlertCircle className="h-3 w-3" />
+                                    {phoneError}
+                                </p>
+                            )}
                         </div>
                         <div className="grid gap-2">
                             <label className="text-sm font-medium leading-none">Role</label>
@@ -155,7 +203,13 @@ const Profile = () => {
                         {isEditing ? (
                             <>
                                 <Button variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
-                                <Button onClick={handleSubmit}>Save Changes</Button>
+                                <Button 
+                                    onClick={handleSubmit}
+                                    disabled={phoneError || !validateName(formData.name)}
+                                    className="disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Save Changes
+                                </Button>
                             </>
                         ) : (
                             <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
