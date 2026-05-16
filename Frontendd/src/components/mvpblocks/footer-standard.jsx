@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { LegalModal } from "../ui/legal-modal";
 import { legalContent } from "../../data/legalContent";
 import { Button } from "../ui/button";
@@ -16,13 +17,13 @@ import { Input } from "../ui/input";
 const data = () => ({
   navigation: {
     product: [
-      { name: "Features", href: "#features" },
-      { name: "Pricing", href: "#pricing" },
+      { name: "Features", href: "/features" },
+      { name: "Pricing", href: "/pricing" },
       // { name: "Integrations", href: "#integrations" },
       // { name: "Roadmap", href: "#roadmap" },
     ],
     company: [
-      { name: "About", href: "/about" },
+      { name: "About", href: "/about-us" },
       // { name: "Blog", href: "/blog" },
 
       // { name: "Careers", href: "/careers" },
@@ -144,18 +145,18 @@ export default function FooterStandard() {
                 <ul className="space-y-3">
                   {data().navigation[section].map((item) => (
                     <li key={item.name}>
-                      <a
-                        href={item.href}
+                     <Link
+                        to={item.href}
                         onClick={(e) => {
-                          if (section === 'legal') {
-                            handleLegalClick(e, item.href);
-                          }
-                        }}
+                         if (section === 'legal') {
+                         handleLegalClick(e, item.href);
+                       }
+                       }}
                         className="group text-muted-foreground hover:text-foreground decoration-primary -ml-5 inline-flex items-center gap-2 underline-offset-8 transition-all duration-500 hover:pl-5 hover:underline pointer-events-auto cursor-pointer">
-                        <ArrowDownLeft className="text-primary rotate-[225deg] opacity-30 transition-all duration-500 group-hover:scale-150 group-hover:opacity-100 sm:group-hover:rotate-[225deg] md:rotate-0" />
-                        {item.name}
-                      </a>
-                    </li>
+                       <ArrowDownLeft className="text-primary rotate-[225deg] opacity-30 transition-all duration-500 group-hover:scale-150 group-hover:opacity-100 sm:group-hover:rotate-[225deg] md:rotate-0" />
+                       {item.name}
+                    </Link>
+                  </li>
                   ))}
                 </ul>
               </div>
