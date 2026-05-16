@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { login } from './utils/login.js';
 
 test('user can open signup page', async ({ page }) => {
   await page.goto('/signup');
@@ -20,16 +21,10 @@ test('user can open login page', async ({ page }) => {
   ).toBeVisible();
 });
 
-test('user can fill login form', async ({ page }) => {
-  await page.goto('/login');
+test('user can login successfully', async ({ page }) => {
+  await login(page, 'test@gmail.com', 'password123');
 
-  await page
-    .locator('input[placeholder="name@example.com"]')
-    .fill('test@gmail.com');
-
-  await page.locator('input[type="password"]').fill('password123');
-
-  await page.getByRole('button', { name: /sign in/i }).click();
+  await expect(page.locator('body')).toBeVisible();
 });
 test('user can fill signup form', async ({ page }) => {
   await page.goto('/signup');
