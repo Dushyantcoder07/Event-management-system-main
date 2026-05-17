@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, X, Calendar, MapPin, Building, Shield, Users, Activity, TrendingUp, Download, Trash2 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
+import { Textarea } from '../../components/ui/textarea';
 import { useAuth } from '../../context/AuthContext';
 
 
@@ -15,6 +16,9 @@ export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState('Pending Reviews');
     const [allEvents, setAllEvents] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
+    const [rejectingEvent, setRejectingEvent] = useState(null);
+    const [rejectReason, setRejectReason] = useState('');
+    const [rejectLoading, setRejectLoading] = useState(false);
 
     useEffect(() => {
         if (activeTab === 'Pending Reviews') {
@@ -101,6 +105,46 @@ export default function AdminDashboard() {
             }
         } catch (error) {
             console.error(`Failed to ${action} event`, error);
+        }
+    };
+
+    const handleRejectEvent = async () => {
+        const trimmedReason = rejectReason.trim();
+
+        if (!rejectingEvent || trimmedReason.length < 20) {
+            return;
+        }
+
+        try {
+            setRejectLoading(true);
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_BASE_URL}/api/admin/events/${rejectingEvent._id}/reject`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ reason: trimmedReason })
+            });
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                alert(data.message || 'Failed to reject event');
+                return;
+            }
+
+            setPendingEvents(prev => prev.filter(e => e._id !== rejectingEvent._id));
+            if (activeTab === 'All Events & Management') {
+                fetchAllEvents();
+            }
+            fetchStats();
+            setRejectingEvent(null);
+            setRejectReason('');
+        } catch (error) {
+            console.error("Failed to reject event", error);
+            alert('Failed to reject event');
+        } finally {
+            setRejectLoading(false);
         }
     };
 
@@ -330,7 +374,10 @@ export default function AdminDashboard() {
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                onClick={() => handleAction(event._id, 'reject')}
+                                                                onClick={() => {
+                                                                    setRejectingEvent(event);
+                                                                    setRejectReason('');
+                                                                }}
                                                                 className="text-red-500 hover:text-red-600 hover:bg-red-500/10 h-9"
                                                             >
                                                                 Reject
@@ -517,14 +564,82 @@ export default function AdminDashboard() {
                                     </Button>
                                     <Button
                                         onClick={() => {
-                                            handleAction(selectedEvent._id, 'reject');
                                             setSelectedEvent(null);
+                                            setRejectingEvent(selectedEvent);
+                                            setRejectReason('');
                                         }}
-                                        variant="destructive"
-                                        className="w-full justify-center bg-red-600 hover:bg-red-700"
+                                        variant="outline"
+                                        className="w-full justify-center border-red-500/30 text-red-600 hover:bg-red-500/10"
                                     >
                                         <Trash2 className="w-4 h-4 mr-2" />
-                                        Delete Event Permanently
+                                        Reject Event
+                                    </Button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {rejectingEvent && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white text-zinc-950 w-full max-w-lg rounded-2xl border border-zinc-200 shadow-2xl overflow-hidden"
+                        >
+                            <div className="p-6">
+                                <div className="flex justify-between items-start gap-4 mb-6">
+                                    <div>
+                                        <h3 className="text-2xl font-bold text-zinc-900">Reject Event</h3>
+                                        <p className="text-zinc-500 text-sm mt-1">{rejectingEvent.title}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            if (rejectLoading) return;
+                                            setRejectingEvent(null);
+                                            setRejectReason('');
+                                        }}
+                                        className="text-zinc-400 hover:text-zinc-900"
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <label className="text-sm font-medium text-zinc-800">
+                                        Reason for rejection
+                                    </label>
+                                    <Textarea
+                                        value={rejectReason}
+                                        onChange={(e) => setRejectReason(e.target.value)}
+                                        placeholder="Reason for rejection"
+                                        className="min-h-[140px] bg-zinc-50 border-zinc-200"
+                                    />
+                                    <div className={`text-xs ${rejectReason.trim().length >= 20 ? 'text-green-600' : 'text-zinc-500'}`}>
+                                        {rejectReason.trim().length}/20 characters minimum
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-3 mt-6">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            setRejectingEvent(null);
+                                            setRejectReason('');
+                                        }}
+                                        disabled={rejectLoading}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        onClick={handleRejectEvent}
+                                        disabled={rejectLoading || rejectReason.trim().length < 20}
+                                        className="bg-red-600 hover:bg-red-700 text-white"
+                                    >
+                                        {rejectLoading ? 'Rejecting...' : 'Reject Event'}
                                     </Button>
                                 </div>
                             </div>

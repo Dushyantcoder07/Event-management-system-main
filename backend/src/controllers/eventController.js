@@ -34,6 +34,11 @@ export const updateEvent = async (req, res) => {
     ).lean();
     if (!oldEvent) return res.status(404).json({ message: 'Event not found' });
 
+    if (oldEvent.status === 'rejected') {
+      update.status = 'pending';
+      update.rejectionReason = '';
+    }
+
     const event = await Event.findOneAndUpdate(
       { _id: req.params.id, organizer: req.user.id },
       update,
