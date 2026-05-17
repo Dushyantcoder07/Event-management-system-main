@@ -146,33 +146,7 @@ export const checkInParticipant = async (req, res) => {
   } catch (err) {
     console.error("ERROR:", err);
     res.status(500).json({ message: err.message });
-  }
-};
-
-export const exportParticipantsCsv = async (req, res) => {
-  try {
-    const regs = await Registration.find({ event: req.params.id }).populate("user", "name email");
-    const rows = regs.map((r) => ({
-      name: r.user?.name || "",
-      email: r.user?.email || "",
-      status: r.status,
-      registeredAt: r.createdAt,
-    }));
-    const filePath = path.join(process.cwd(), `participants-${req.params.id}.csv`);
-    const csvWriter = createObjectCsvWriter({
-      path: filePath,
-      header: [
-        { id: "name", title: "Name" },
-        { id: "email", title: "Email" },
-        { id: "status", title: "Status" },
-        { id: "registeredAt", title: "Registered At" },
-      ],
-    });
-    await csvWriter.writeRecords(rows);
-    res.download(filePath);
-  } catch (err) {
-    console.error("ERROR:", err);
-    res.status(500).json({ message: err.message });
+    
   }
 };
 
@@ -180,17 +154,29 @@ export const checkRegistrationStatus = async (req, res) => {
   try {
     const registration = await Registration.findOne({
       user: req.user.id,
-      event: req.params.id,
-      status: { $ne: "cancelled" },
+      event: req.params.id
     });
 
-    res.json({
-      isRegistered: registration?.status === "registered",
-      isWaitlisted: registration?.status === "waitlisted",
-      registration,
+    res.status(200).json({
+      registered: !!registration,
+      isRegistered: !!registration,
+      registration
     });
   } catch (err) {
-    console.error("ERROR:", err);
+    console.error('ERROR:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const myRegistrations = async (req, res) => {
+  try {
+    const registrations = await Registration.find({
+      user: req.user.id
+    }).populate('event');
+
+    res.status(200).json({ registrations });
+  } catch (err) {
+    console.error('ERROR:', err);
     res.status(500).json({ message: err.message });
   }
 };
