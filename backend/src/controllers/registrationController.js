@@ -3,6 +3,8 @@ import Registration from '../models/Registration.js';
 import { generateQRCodeDataUrl } from '../utils/qrcode.js';
 import { sendEmail } from '../utils/email.js';
 
+import User from '../models/User.js';
+
 export const registerForEvent = async (req, res) => {
   try {
     const eventId = req.params.id;
@@ -37,97 +39,6 @@ export const registerForEvent = async (req, res) => {
     res.status(201).json({ registration: reg });
   } catch (err) {
     res.status(500).json({ message: err.message });
-  }
-};
-
-    // Secure check-in handler (from fix/10-checkin-organizer-ownership)
-    export const checkInParticipant = async (req, res) => {
-      try {
-        // Auth context validation
-        // Verify caller is authenticated; auth middleware should populate req.user
-        if (!req.user) {
-          console.warn('[AUTH] Check-in attempt without auth context');
-          return res.status(401).json({ message: 'Unauthorized: user not authenticated' });
-        }
-        if (!req.user.id || !req.user.role) {
-          console.warn('[AUTH] Check-in attempt with invalid user context', { user: req.user });
-          return res.status(401).json({ message: 'Unauthorized: invalid user context' });
-        }
-
-        // Request validation
-        if (!req.body || !req.body.userId) {
-          return res.status(400).json({ message: 'Bad Request: userId is required' });
-        }
-
-        // Validate status value (defensive)
-        const validStatuses = ['attended', 'cancelled', 'no-show'];
-        const status = (req.body.status || 'attended').toString().trim().toLowerCase();
-        if (!validStatuses.includes(status)) {
-          return res.status(400).json({ message: `Invalid status: must be one of ${validStatuses.join(', ')}` });
-        }
-
-        // Load event and verify ownership for non-admin organizers
-        const event = await Event.findById(req.params.id).select('organizer');
-        if (!event) return res.status(404).json({ message: 'Event not found' });
-
-        // Data integrity check
-        if (!event.organizer) {
-          console.error(`[ALERT] Event ${req.params.id} has missing organizer — investigate database integrity`);
-          return res.status(500).json({ message: 'Server error: event data corrupted' });
-        }
-
-        // Admin bypass: admins may check in for any event
-        if (req.user.role !== 'admin' && event.organizer.toString() !== req.user.id) {
-          console.warn(`[SECURITY] Unauthorized check-in attempt by organizer ${req.user.id} for event ${req.params.id}`);
-          return res.status(403).json({ message: 'Forbidden: you are not the organizer of this event' });
-        }
-
-        // Perform atomic update
-        const reg = await Registration.findOneAndUpdate(
-          { user: req.body.userId, event: req.params.id },
-          { status: status, checkedInAt: status === 'attended' ? new Date() : undefined },
-          { new: true }
-        );
-
-        if (!reg) return res.status(404).json({ message: 'Registration not found for this user/event' });
-        res.json({ registration: reg });
-      } catch (err) {
-        console.error(`[ERROR] Check-in failed for event ${req.params.id}:`, err.message);
-        res.status(500).json({ message: 'Internal server error' });
-      }
-    };
-export const checkRegistrationStatus = async (req, res) => {
-  try {
-    const registration = await Registration.findOne({
-      user: req.user.id,
-      event: req.params.id
-    });
-
-    res.status(200).json({
-      registered: !!registration,
-      registration
-    });
-
-  } catch (err) {
-    res.status(500).json({
-      message: err.message
-    });
-  }
-};
-export const exportParticipantsCsv = async (req, res) => {
-  try {
-    const registrations = await Registration.find({
-      event: req.params.id
-    }).populate('user', 'name email');
-
-    res.status(200).json({
-      participants: registrations
-    });
-
-  } catch (err) {
-    res.status(500).json({
-      message: err.message
-    });
   }
 };
 
@@ -195,28 +106,39 @@ export const checkInParticipant = async (req, res) => {
 			});
 		}
 
-		const registration = await Registration.findOneAndUpdate(
-			{
-				user: req.body.userId,
-				event: req.params.id
-			},
-			{
-				status,
-				checkedInAt:
-					status === 'attended'
-						? new Date()
-						: undefined
-			},
-			{ new: true }
-		);
-
-		if (!registration) {
+		const registration = await Registration.findOne({
+			user: req.body.userId,
+			event: req.params.id
+		  });
+		  
+		  if (!registration) {
 			return res.status(404).json({
-				message: 'Registration not found'
+			  message: 'Registration not found'
 			});
-		}
+		  }
+		  
+		  if (registration.status === 'attended') {
+			return res.status(400).json({
+			  message: 'Attendee already checked in'
+			});
+		  }
+		  
+		  registration.status = status;
+		  
+		  registration.checkedInAt =
+			status === 'attended'
+			  ? new Date()
+			  : undefined;
+		  
+		  await registration.save();
 
-		res.status(200).json({ registration });
+		const attendee = await User.findById(req.body.userId);
+
+		res.status(200).json({
+		registration,
+		attendeeName: attendee?.name || 'Attendee',
+		});
+
 	} catch (err) {
 		res.status(500).json({ message: err.message });
 	}

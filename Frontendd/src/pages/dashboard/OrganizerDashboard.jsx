@@ -385,13 +385,23 @@ export default function OrganizerDashboard() {
                                                         </div>
 
                                                         {/* Management Actions */}
-                                                        <div className="flex justify-end mt-4 pt-4 border-t border-border/50">
+                                                        <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-border/50">
+                                                        {event.status === 'approved' && (
+                                                            <Button
+                                                                size="sm"
+                                                                className="bg-orange-500 hover:bg-orange-600 text-white"
+                                                                onClick={() => navigate(`/organizer/scan/${event._id}`)}
+                                                            >
+                                                                Scan QR
+                                                            </Button>
+                                                        )}
                                                             <Button
                                                                 size="sm"
                                                                 variant="outline"
                                                                 className="border-purple-500/30 text-purple-500 hover:bg-purple-500/10"
                                                                 onClick={() => setSelectedEvent(event)}
                                                             >
+                                                                
                                                                 Manage Event
                                                             </Button>
                                                         </div>
