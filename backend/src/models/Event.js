@@ -13,6 +13,10 @@ const eventSchema = new mongoose.Schema(
     status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
     tags: [{ type: String }],
     averageRating: { type: Number, default: 0 },
+
+    // Event price fields (temporary optional)
+    price: { type: Number, default: 0 },
+    isFree: {type:Boolean, default:true}
   },
   { timestamps: true }
 );
